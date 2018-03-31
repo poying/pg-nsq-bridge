@@ -1,0 +1,16 @@
+hash: eae532aa02c8cf66bd12e0794069cbdaa776572c0178c5fbede35d8ea763d2ac
+updated: 2018-04-01T00:00:09.653042934+08:00
+imports:
+- name: github.com/golang/snappy
+  version: 553a641470496b2327abcac10b36396bd98e45c9
+- name: github.com/lib/pq
+  version: 19c8e9ad00952ce0c64489b60e8df88bb16dd514
+  subpackages:
+  - oid
+- name: github.com/nsqio/go-nsq
+  version: eee57a3ac4174c55924125bb15eeeda8cffb6e6f
+- name: github.com/sirupsen/logrus
+  version: c155da19408a8799da419ed3eeb0cb5db0ad5dbc
+- name: github.com/urfave/cli
+  version: cfb38830724cc34fedffe9a2a29fb54fa9169cd1
+testImports: []

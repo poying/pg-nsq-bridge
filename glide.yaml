@@ -1,0 +1,9 @@
+package: github.com/poying/pg-nsq-bridge
+import:
+- package: github.com/lib/pq
+- package: github.com/nsqio/go-nsq
+  version: ^1.0.7
+- package: github.com/urfave/cli
+  version: ^1.20.0
+- package: github.com/sirupsen/logrus
+  version: ^1.0.5
