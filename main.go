@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const version = "0.0.0"
+const version = "0.0.1"
 
 func main() {
 	exitCh := make(chan os.Signal, 1)
@@ -18,14 +19,9 @@ func main() {
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "pgchannel",
-			Value: "pgnsqbridge",
-			Usage: "Postgres Channel Name",
-		},
-		cli.StringFlag{
-			Name:  "nsqchannel",
-			Value: "pgnsqbridge",
-			Usage: "NSQ Channel Name",
+			Name:  "channel",
+			Value: "pgchannel:nsqchannel",
+			Usage: "Postgres & NSQ Channel Name",
 		},
 		cli.StringFlag{
 			Name:  "pgaddr",
@@ -37,31 +33,45 @@ func main() {
 			Value: "127.0.0.1:4150",
 			Usage: "NSQ Address",
 		},
+		cli.BoolFlag{
+			Name:  "raw",
+			Usage: "Output JSON format",
+		},
 	}
 	app.Name = "pg-nsq-bridge"
 	app.Usage = ""
 	app.Description = "Publish messages from Postgres to NSQ"
 	app.Version = version
 	app.Action = func(c *cli.Context) error {
+		if c.Bool("raw") {
+			log.SetFormatter(&log.JSONFormatter{})
+		}
 		options := bridge.Options{
-			PostgresChannel: c.String("pgchannel"),
-			NSQChannel:      c.String("nsqchannel"),
+			Channel:         c.String("channel"),
 			PostgresAddress: c.String("pgaddr"),
 			NSQAddress:      c.String("nsqaddr"),
 			OnError: func(err error) {
 				log.Error(err)
 			},
-			OnProcess: func(payload bridge.Payload) {
-				log.Info("Receive notifcation: " + payload.Data)
+			OnProcess: func(postgresChannel, nsqChannel string, payload bridge.Payload) {
+				fields := log.Fields{
+					"postgresChannel": postgresChannel,
+					"nsqChannel":      nsqChannel,
+					"payload":         payload,
+				}
+				log.WithFields(fields).Info("Receive message")
 			},
 		}
 		b, err := bridge.New(options)
 		if err != nil {
 			return err
 		}
-		go b.Start()
-		defer b.Stop()
-		<-exitCh
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			<-exitCh
+			cancel()
+		}()
+		b.Start(ctx)
 		return nil
 	}
 	err := app.Run(os.Args)

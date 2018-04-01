@@ -1,26 +1,24 @@
 package bridge
 
 import (
-	"time"
+	"errors"
+	"strings"
 
-	"github.com/lib/pq"
 	nsq "github.com/nsqio/go-nsq"
 )
 
 type Options struct {
 	PostgresAddress string
 	NSQAddress      string
-	PostgresChannel string
-	NSQChannel      string
+	Channel         string
 	OnError         func(err error)
-	OnProcess       func(payload Payload)
+	OnProcess       func(postgresChannel, nsqChannel string, payload Payload)
 }
 
 type Bridge struct {
 	Options
-	stopCh           chan int
-	postgresListener *pq.Listener
-	nsqProducer      *nsq.Producer
+	channels    map[string]string
+	nsqProducer *nsq.Producer
 }
 
 func New(options Options) (*Bridge, error) {
@@ -29,21 +27,26 @@ func New(options Options) (*Bridge, error) {
 	if err != nil {
 		return nil, err
 	}
-	minReconn := 10 * time.Second
-	maxReconn := time.Minute
-	postgresListener := pq.NewListener(options.PostgresAddress, minReconn, maxReconn, func(ev pq.ListenerEventType, err error) {
-		if err != nil {
-			options.OnError(err)
-		}
-	})
+	channels, err := parseChannel(options.Channel)
+	if err != nil {
+		return nil, err
+	}
 	return &Bridge{
 		options,
-		make(chan int, 1),
-		postgresListener,
+		channels,
 		nsqProducer,
 	}, nil
 }
 
-func (b *Bridge) Stop() {
-	b.stopCh <- 1
+func parseChannel(input string) (map[string]string, error) {
+	channels := make(map[string]string)
+	parts := strings.Split(input, ",")
+	for _, part := range parts {
+		ch := strings.Split(part, ":")
+		if len(ch) != 2 {
+			return channels, errors.New("Invalid channel format")
+		}
+		channels[strings.TrimSpace(ch[0])] = strings.TrimSpace(ch[1])
+	}
+	return channels, nil
 }
