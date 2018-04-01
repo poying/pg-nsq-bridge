@@ -2,6 +2,8 @@
 
 Publish messages from Postgres to NSQ
 
+![](./screen.gif)
+
 ### Usage
 
 ```bash
